@@ -1,21 +1,18 @@
-class EnableMicrosoftteamsProjectModule < (ActiveRecord::Migration.respond_to?(:[]) ? ActiveRecord::Migration[4.2] : ActiveRecord::Migration)
-  def up
-    module_name = 'microsoftteams'
+# frozen_string_literal: true
 
-    Project.all.each do |project|
-      unless EnabledModule.exists?(:project_id => project.id, :name => module_name)
-        EnabledModule.create!(:project_id => project.id, :name => module_name)
-      end
+class EnableMicrosoftteamsProjectModule < ActiveRecord::Migration[4.2]
+  MODULE_NAME = 'microsoftteams'
+
+  def up
+    Project.find_each do |project|
+      EnabledModule.find_or_create_by!(project_id: project.id, name: MODULE_NAME)
     end
 
-    default_modules = Array(Setting.default_projects_modules)
-    Setting.default_projects_modules = (default_modules | [module_name])
+    Setting.default_projects_modules = Array(Setting.default_projects_modules) | [MODULE_NAME]
   end
 
   def down
-    module_name = 'microsoftteams'
-
-    EnabledModule.where(:name => module_name).delete_all
-    Setting.default_projects_modules = Array(Setting.default_projects_modules) - [module_name]
+    EnabledModule.where(name: MODULE_NAME).delete_all
+    Setting.default_projects_modules = Array(Setting.default_projects_modules) - [MODULE_NAME]
   end
 end
