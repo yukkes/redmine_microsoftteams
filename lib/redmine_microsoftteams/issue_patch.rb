@@ -1,43 +1,35 @@
+# frozen_string_literal: true
+
 module RedmineMicrosoftteams
   module IssuePatch
-    def self.included(base) # :nodoc:
-      base.extend(ClassMethods)
-      base.send(:include, InstanceMethods)
-
-      base.class_eval do
-        after_create :create_from_issue
-        after_save :save_from_issue
-      end
+    def self.included(base)
+      base.after_create :create_from_issue
+      base.after_save :save_from_issue
     end
 
-    module ClassMethods
+    def create_from_issue
+      @create_already_fired = true
+      return unless user_has_role?
+
+      Redmine::Hook.call_hook(:redmine_microsoftteams_issues_new_after_save, issue: self)
     end
 
-    module InstanceMethods
-      def create_from_issue
-        @create_already_fired = true
-        if user_has_role?
-          Redmine::Hook.call_hook(:redmine_microsoftteams_issues_new_after_save, { :issue => self})
-        end
-        return true
-      end
+    def save_from_issue
+      return if @create_already_fired || current_journal.nil? || !user_has_role?
 
-      def save_from_issue
-        if not @create_already_fired
-          if user_has_role?
-            Redmine::Hook.call_hook(:redmine_microsoftteams_issues_edit_after_save, { :issue => self, :journal => self.current_journal}) unless self.current_journal.nil?
-          end
-        end
-        return true
-      end
-      private
-      def user_has_role?
-        role_name = Setting.plugin_redmine_microsoftteams['webhook_role']
-        return true if role_name.blank?
-        user = User.current
-        return false unless user && user.logged?
-        user.roles_for_project(self.project).any? { |role| role.name == role_name }
-      end
+      Redmine::Hook.call_hook(:redmine_microsoftteams_issues_edit_after_save, issue: self, journal: current_journal)
+    end
+
+    private
+
+    def user_has_role?
+      role_name = Setting.plugin_redmine_microsoftteams['webhook_role']
+      return true if role_name.blank?
+
+      user = User.current
+      return false unless user&.logged?
+
+      user.roles_for_project(project).any? { |role| role.name == role_name }
     end
   end
 end

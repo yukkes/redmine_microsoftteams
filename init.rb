@@ -1,6 +1,4 @@
-require 'redmine'
-
-require File.expand_path('../lib/redmine_microsoftteams/listener', __FILE__)
+# frozen_string_literal: true
 
 Redmine::Plugin.register :redmine_microsoftteams do
   name 'Redmine Microsoft Teams'
@@ -8,33 +6,18 @@ Redmine::Plugin.register :redmine_microsoftteams do
   url 'https://github.com/wellbia/redmine_microsoftteams'
   author_url 'https://github.com/wellbia'
   description 'Microsoft Teams chat integration'
-  version '0.5.0'
+  version '0.6.0'
 
-  requires_redmine :version_or_higher => '0.8.0'
+  requires_redmine version_or_higher: '5.0'
 
   project_module :microsoftteams do
-    permission :receive_microsoftteams_notifications, {}, :public => true
+    permission :receive_microsoftteams_notifications, {}, public: true
   end
 
-  settings \
-    :default => {
-      'display_watchers' => 'no',
-      'webhook_role' => ''
-    },
-    :partial => 'settings/microsoftteams_settings'
+  settings default: {
+    'display_watchers' => 'no',
+    'webhook_role' => ''
+  }, partial: 'settings/microsoftteams_settings'
 end
 
-if Rails.version > '6.0' && Rails.autoloaders.zeitwerk_enabled?
-  Rails.application.config.after_initialize do
-    unless Issue.included_modules.include? RedmineMicrosoftteams::IssuePatch
-      Issue.send(:include, RedmineMicrosoftteams::IssuePatch)
-    end
-  end
-else
-  ((Rails.version > "5")? ActiveSupport::Reloader : ActionDispatch::Callbacks).to_prepare do
-    require_dependency 'issue'
-    unless Issue.included_modules.include? RedmineMicrosoftteams::IssuePatch
-      Issue.send(:include, RedmineMicrosoftteams::IssuePatch)
-    end
-  end
-end
+RedmineMicrosoftteams.setup
